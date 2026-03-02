@@ -31,7 +31,22 @@ type Ride struct {
 	IsRoundTrip bool       `json:"is_round_trip"`
 	CreatedAt   time.Time  `json:"created_at"`
 	MatchedAt   *time.Time `json:"matched_at,omitempty"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	CancelledAt *time.Time `json:"cancelled_at,omitempty"`
+}
+
+type RateInput struct {
+	Score   int    `json:"score" binding:"required,min=1,max=5"`
+	Comment string `json:"comment"`
+}
+
+type RideStats struct {
+	RidesToday           int     `json:"rides_today"`
+	RidesWeek            int     `json:"rides_week"`
+	RevenueToday         float64 `json:"revenue_today"`
+	ActiveRides          int     `json:"active_rides"`
+	AvgPassengersPerBatch float64 `json:"avg_passengers_per_batch"`
 }
 
 type RideBatch struct {

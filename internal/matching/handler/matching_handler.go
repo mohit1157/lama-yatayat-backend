@@ -2,31 +2,35 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/mohit1157/lama-yatayat-backend/internal/matching/models"
+	"github.com/mohit1157/lama-yatayat-backend/internal/matching/service"
 	"github.com/mohit1157/lama-yatayat-backend/pkg/response"
 )
 
 type MatchingHandler struct {
-	// engine *service.MatchingService // TODO: wire up
+	svc *service.MatchingService
 }
 
-func NewMatchingHandler() *MatchingHandler {
-	return &MatchingHandler{}
+func NewMatchingHandler(svc *service.MatchingService) *MatchingHandler {
+	return &MatchingHandler{svc: svc}
 }
 
 func (h *MatchingHandler) FindRiders(c *gin.Context) {
-	// TODO: Called by Ride Service when driver goes online
-	// 1. Get driver route polyline
-	// 2. Decompose into geohash segments
-	// 3. Query pending rides in corridor
-	// 4. Filter by detour tolerance
-	// 5. Run TSP solver
-	// 6. Return batch
-	response.Success(c, gin.H{"batch": nil, "message": "matching engine ready"})
+	var req models.MatchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	batch, err := h.svc.FindRiders(c.Request.Context(), &req)
+	if err != nil {
+		response.Success(c, gin.H{"batch": nil, "message": err.Error()})
+		return
+	}
+	response.Success(c, batch)
 }
 
 func (h *MatchingHandler) GetBatch(c *gin.Context) {
-	batchID := c.Param("id")
-	response.Success(c, gin.H{"batch_id": batchID})
+	response.Success(c, gin.H{"batch_id": c.Param("id"), "message": "batch details"})
 }
 
 func (h *MatchingHandler) OptimizeSequence(c *gin.Context) {

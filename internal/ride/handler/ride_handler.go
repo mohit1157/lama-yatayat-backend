@@ -1,17 +1,23 @@
 package handler
 
 import (
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/mohit1157/lama-yatayat-backend/internal/ride/models"
+	"github.com/mohit1157/lama-yatayat-backend/internal/ride/service"
 	"github.com/mohit1157/lama-yatayat-backend/pkg/response"
 )
 
 type RideHandler struct {
-	// svc *service.RideService  // TODO: wire up
+	svc            *service.RideService
+	baseFareRT     float64
+	baseFareOneWay float64
 }
 
-func NewRideHandler() *RideHandler {
-	return &RideHandler{}
+func NewRideHandler(svc *service.RideService, baseFareRT, baseFareOneWay float64) *RideHandler {
+	return &RideHandler{svc: svc, baseFareRT: baseFareRT, baseFareOneWay: baseFareOneWay}
 }
 
 func (h *RideHandler) RequestRide(c *gin.Context) {
@@ -20,58 +26,126 @@ func (h *RideHandler) RequestRide(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	// TODO: Call service layer to create ride, publish ride.requested event
-	response.Created(c, gin.H{"message": "ride requested", "ride_id": "TODO"})
+
+	riderID, _ := c.Get("user_id")
+	fare := h.baseFareOneWay
+	if req.IsRoundTrip {
+		fare = h.baseFareRT
+	}
+
+	ride, err := h.svc.RequestRide(c.Request.Context(), riderID.(string), &req, fare)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Created(c, ride)
 }
 
 func (h *RideHandler) GetRide(c *gin.Context) {
-	rideID := c.Param("id")
-	// TODO: Fetch from service
-	response.Success(c, gin.H{"ride_id": rideID, "status": "requested"})
+	ride, err := h.svc.GetRide(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		response.NotFound(c, "ride not found")
+		return
+	}
+	response.Success(c, ride)
 }
 
 func (h *RideHandler) CancelRide(c *gin.Context) {
-	rideID := c.Param("id")
-	// TODO: Cancel logic with grace period
-	response.Success(c, gin.H{"message": "ride cancelled", "ride_id": rideID})
+	userID, _ := c.Get("user_id")
+	if err := h.svc.CancelRide(c.Request.Context(), c.Param("id"), userID.(string)); err != nil {
+		response.Error(c, http.StatusConflict, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"message": "ride cancelled"})
 }
 
 func (h *RideHandler) ConfirmPickup(c *gin.Context) {
-	rideID := c.Param("id")
-	response.Success(c, gin.H{"message": "pickup confirmed", "ride_id": rideID})
+	if err := h.svc.ConfirmPickup(c.Request.Context(), c.Param("id")); err != nil {
+		response.Error(c, http.StatusConflict, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"message": "pickup confirmed"})
 }
 
 func (h *RideHandler) ConfirmDropoff(c *gin.Context) {
-	rideID := c.Param("id")
-	response.Success(c, gin.H{"message": "dropoff confirmed", "ride_id": rideID})
+	if err := h.svc.ConfirmDropoff(c.Request.Context(), c.Param("id")); err != nil {
+		response.Error(c, http.StatusConflict, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"message": "dropoff confirmed"})
 }
 
 func (h *RideHandler) GetActiveRide(c *gin.Context) {
-	response.Success(c, gin.H{"ride": nil})
+	userID, _ := c.Get("user_id")
+	ride, err := h.svc.GetActiveRide(c.Request.Context(), userID.(string))
+	if err != nil {
+		response.Success(c, gin.H{"ride": nil})
+		return
+	}
+	response.Success(c, ride)
 }
 
 func (h *RideHandler) GetRideHistory(c *gin.Context) {
-	response.Success(c, gin.H{"rides": []interface{}{}, "total": 0})
+	userID, _ := c.Get("user_id")
+	limit, offset := getPagination(c)
+	rides, total, err := h.svc.GetHistory(c.Request.Context(), userID.(string), limit, offset)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": rides, "meta": gin.H{"total": total}})
 }
 
 func (h *RideHandler) RateRide(c *gin.Context) {
+	var input models.RateInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	userID, _ := c.Get("user_id")
+	if err := h.svc.RateRide(c.Request.Context(), c.Param("id"), userID.(string), &input); err != nil {
+		response.Error(c, http.StatusConflict, err.Error())
+		return
+	}
 	response.Success(c, gin.H{"message": "rating submitted"})
 }
 
 func (h *RideHandler) GetFareEstimate(c *gin.Context) {
-	response.Success(c, models.FareEstimate{
-		BaseFare: 10.00, Total: 10.00, IsRoundTrip: false,
-	})
+	isRoundTrip := c.Query("round_trip") == "true"
+	estimate := h.svc.GetFareEstimate(c.Request.Context(), isRoundTrip, h.baseFareRT, h.baseFareOneWay)
+	response.Success(c, estimate)
 }
 
 // Admin endpoints
+
 func (h *RideHandler) ListRidesAdmin(c *gin.Context) {
-	response.Success(c, gin.H{"rides": []interface{}{}, "total": 0})
+	limit, offset := getPagination(c)
+	status := c.Query("status")
+	rides, total, err := h.svc.ListAll(c.Request.Context(), status, limit, offset)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": rides, "meta": gin.H{"total": total}})
 }
 
 func (h *RideHandler) GetRideStats(c *gin.Context) {
-	response.Success(c, gin.H{
-		"rides_today": 0, "rides_week": 0, "revenue_today": 0,
-		"active_rides": 0, "avg_passengers_per_batch": 0,
-	})
+	stats, err := h.svc.GetStats(c.Request.Context())
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, stats)
+}
+
+func getPagination(c *gin.Context) (int, int) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if limit > 100 {
+		limit = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+	return limit, (page - 1) * limit
 }

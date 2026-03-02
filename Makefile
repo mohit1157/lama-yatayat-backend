@@ -65,6 +65,14 @@ build: ## Build all services
 	done
 	@echo "✅ All services built"
 
+build-gateway: ## Build unified gateway (for deployment)
+	@mkdir -p bin
+	go build -o bin/gateway ./cmd/gateway/
+	@echo "✅ Gateway built"
+
+run-gateway: ## Run unified gateway locally
+	go run ./cmd/gateway
+
 # ─── Docker ─────────────────────────────────────
 docker-up: ## Start everything with Docker Compose
 	docker-compose up --build -d
