@@ -1,0 +1,212 @@
+version: "3.9"
+
+# ══════════════════════════════════════════════════════════
+# LaMa Yatayat - Local Development Stack
+# Usage: docker-compose up -d postgres redis
+#        Then run services with: make run
+# Or:    docker-compose up (runs everything including services)
+# ══════════════════════════════════════════════════════════
+
+services:
+  # ─── Infrastructure ──────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: ly-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: lamayatayat
+      POSTGRES_USER: lamayatayat
+      POSTGRES_PASSWORD: devpassword123
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lamayatayat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ly-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend Services ────────────────────────────────
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: user-service
+    container_name: ly-user-service
+    ports:
+      - "8001:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: user-service
+      SERVICE_PORT: "8080"
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ride-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ride-service
+    container_name: ly-ride-service
+    ports:
+      - "8002:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: ride-service
+      SERVICE_PORT: "8080"
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      USER_SERVICE_URL: http://user-service:8080
+      MATCHING_SERVICE_URL: http://route-matching:8080
+      GEOLOCATION_SERVICE_URL: http://geolocation-service:8080
+      PRICING_SERVICE_URL: http://pricing-service:8080
+    depends_on:
+      - user-service
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  route-matching:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: route-matching
+    container_name: ly-route-matching
+    ports:
+      - "8003:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: route-matching
+      SERVICE_PORT: "8080"
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      GEOLOCATION_SERVICE_URL: http://geolocation-service:8080
+    depends_on:
+      - geolocation-service
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  geolocation-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: geolocation-service
+    container_name: ly-geolocation-service
+    ports:
+      - "8004:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: geolocation-service
+      SERVICE_PORT: "8080"
+      REDIS_HOST: redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: payment-service
+    container_name: ly-payment-service
+    ports:
+      - "8005:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: payment-service
+      SERVICE_PORT: "8080"
+      DB_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  pricing-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: pricing-service
+    container_name: ly-pricing-service
+    ports:
+      - "8006:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: pricing-service
+      SERVICE_PORT: "8080"
+      DB_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: notification-service
+    container_name: ly-notification-service
+    ports:
+      - "8007:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: notification-service
+      SERVICE_PORT: "8080"
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  connection-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: connection-service
+    container_name: ly-connection-service
+    ports:
+      - "8008:8080"
+    env_file: .env
+    environment:
+      SERVICE_NAME: connection-service
+      SERVICE_PORT: "8080"
+      REDIS_HOST: redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
