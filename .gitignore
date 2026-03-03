@@ -9,7 +9,7 @@
 
 # Go
 vendor/
-go.sum
+/gateway
 
 # Environment
 .env
