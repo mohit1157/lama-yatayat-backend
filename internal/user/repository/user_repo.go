@@ -25,7 +25,7 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, email, phone, password_hash, name, role, status, avatar_url, created_at, updated_at
+	query := `SELECT id, email, COALESCE(phone,''), password_hash, name, role, status, COALESCE(avatar_url,''), created_at, updated_at
 		FROM users WHERE id = $1`
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&user.ID, &user.Email, &user.Phone, &user.PasswordHash, &user.Name,
@@ -38,7 +38,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*models.User, 
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, email, phone, password_hash, name, role, status, avatar_url, created_at, updated_at
+	query := `SELECT id, email, COALESCE(phone,''), password_hash, name, role, status, COALESCE(avatar_url,''), created_at, updated_at
 		FROM users WHERE email = $1`
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID, &user.Email, &user.Phone, &user.PasswordHash, &user.Name,
@@ -63,7 +63,7 @@ func (r *UserRepository) ListByRole(ctx context.Context, role string, limit, off
 	countQ := `SELECT COUNT(*) FROM users WHERE role = $1`
 	r.db.QueryRow(ctx, countQ, role).Scan(&total)
 
-	query := `SELECT id, email, phone, '', name, role, status, avatar_url, created_at, updated_at
+	query := `SELECT id, email, COALESCE(phone,''), '', name, role, status, COALESCE(avatar_url,''), created_at, updated_at
 		FROM users WHERE role = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 	rows, err := r.db.Query(ctx, query, role, limit, offset)
 	if err != nil {

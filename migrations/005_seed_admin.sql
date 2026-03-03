@@ -1,10 +1,10 @@
 -- Migration: 005 - Seed admin user and demo data
 
 -- Admin user (password: admin123456)
-INSERT INTO users (id, email, phone, password_hash, name, role, status) VALUES
+INSERT INTO users (id, email, phone, password_hash, name, role, status, avatar_url) VALUES
 ('00000000-0000-0000-0000-000000000001', 'admin@lamayatayat.com', '+1234567890',
- '$2a$10$XQxBj4vGNXr1RZiHKqcjLuZpXvDKxNRiDmhLGkm6xBJFGxJhKZP2e',
- 'Admin User', 'admin', 'active')
+ '$2a$10$drMHjzSre4WZ/raLVKKNru1/nh5vr2uDNWwEvB.HvgE4wWDoJIfuS',
+ 'Admin User', 'admin', 'active', '')
 ON CONFLICT (email) DO NOTHING;
 
 -- Sample pricing zones
