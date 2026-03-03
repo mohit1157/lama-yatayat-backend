@@ -1,14 +1,8 @@
 [build]
-builder = "nixpacks"
-
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["go_1_22"]
-
-[build.nixpacksPlan.phases.build]
-cmds = ["go build -o /out/gateway ./cmd/gateway"]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "/out/gateway"
 healthcheckPath = "/health"
 healthcheckTimeout = 10
 restartPolicyType = "ON_FAILURE"
