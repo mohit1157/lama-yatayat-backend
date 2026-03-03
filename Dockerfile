@@ -6,7 +6,7 @@
 # ─── Stage 1: Build ─────────────────────────────
 FROM golang:1.22-alpine AS builder
 
-ARG SERVICE=user-service
+ARG SERVICE=gateway
 
 RUN apk add --no-cache git ca-certificates
 
