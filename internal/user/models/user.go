@@ -35,7 +35,7 @@ type DriverProfile struct {
 
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	Password string `json:"password" binding:"required,min=6"`
 	Name     string `json:"name" binding:"required,min=2"`
 	Phone    string `json:"phone"`
 	Role     string `json:"role" binding:"required,oneof=rider driver"`
@@ -66,6 +66,10 @@ type UpdateUserRequest struct {
 	Name      string `json:"name"`
 	Phone     string `json:"phone"`
 	AvatarURL string `json:"avatar_url"`
+}
+
+type AdminResetPasswordRequest struct {
+	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
 type DriverWithUser struct {

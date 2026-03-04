@@ -142,6 +142,19 @@ func (h *UserHandler) ListDrivers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": drivers, "meta": gin.H{"total": total}})
 }
 
+func (h *UserHandler) ResetUserPassword(c *gin.Context) {
+	var req models.AdminResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if err := h.svc.ResetUserPassword(c.Request.Context(), c.Param("id"), req.NewPassword); err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"message": "password reset successfully"})
+}
+
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	limit, offset := getPagination(c)
 	users, total, err := h.svc.ListUsers(c.Request.Context(), limit, offset)

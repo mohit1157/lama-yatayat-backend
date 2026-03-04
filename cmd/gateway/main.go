@@ -241,6 +241,7 @@ func main() {
 	admin.PUT("/drivers/:id/approve", uH.ApproveDriver)
 	admin.PUT("/drivers/:id/suspend", uH.SuspendDriver)
 	admin.GET("/users", uH.ListUsers)
+	admin.PUT("/users/:id/reset-password", uH.ResetUserPassword)
 	admin.GET("/rides", rH.ListRidesAdmin)
 	admin.GET("/stats", rH.GetRideStats)
 	admin.PUT("/pricing/zones/:id", prH.UpdateZone)

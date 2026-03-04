@@ -58,6 +58,12 @@ func (r *UserRepository) Update(ctx context.Context, id string, req *models.Upda
 	return err
 }
 
+func (r *UserRepository) UpdatePassword(ctx context.Context, id, passwordHash string) error {
+	query := `UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`
+	_, err := r.db.Exec(ctx, query, id, passwordHash)
+	return err
+}
+
 func (r *UserRepository) ListByRole(ctx context.Context, role string, limit, offset int) ([]models.User, int, error) {
 	var total int
 	countQ := `SELECT COUNT(*) FROM users WHERE role = $1`

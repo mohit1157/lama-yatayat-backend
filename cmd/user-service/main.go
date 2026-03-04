@@ -90,6 +90,7 @@ func main() {
 	admin.PUT("/drivers/:id/approve", h.ApproveDriver)
 	admin.PUT("/drivers/:id/suspend", h.SuspendDriver)
 	admin.GET("/users", h.ListUsers)
+	admin.PUT("/users/:id/reset-password", h.ResetUserPassword)
 
 	// Server
 	port := cfg.App.ServicePort

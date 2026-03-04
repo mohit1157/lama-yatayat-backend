@@ -165,6 +165,14 @@ func (s *UserService) ListDrivers(ctx context.Context, limit, offset int) ([]mod
 	return s.repo.ListDriversWithProfiles(ctx, limit, offset)
 }
 
+func (s *UserService) ResetUserPassword(ctx context.Context, userID, newPassword string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	return s.repo.UpdatePassword(ctx, userID, string(hash))
+}
+
 func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]models.User, int, error) {
 	return s.repo.ListByRole(ctx, "rider", limit, offset)
 }
