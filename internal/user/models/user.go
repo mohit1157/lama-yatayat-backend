@@ -67,3 +67,8 @@ type UpdateUserRequest struct {
 	Phone     string `json:"phone"`
 	AvatarURL string `json:"avatar_url"`
 }
+
+type DriverWithUser struct {
+	DriverProfile
+	User User `json:"user"`
+}
