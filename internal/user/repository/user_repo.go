@@ -109,3 +109,39 @@ func (r *UserRepository) UpdateDriverStatus(ctx context.Context, userID, status 
 	_, err := r.db.Exec(ctx, query, userID, status)
 	return err
 }
+
+func (r *UserRepository) ListDriversWithProfiles(ctx context.Context, limit, offset int) ([]models.DriverWithUser, int, error) {
+	var total int
+	countQ := `SELECT COUNT(*) FROM users u LEFT JOIN driver_profiles dp ON u.id = dp.user_id WHERE u.role = 'driver'`
+	r.db.QueryRow(ctx, countQ).Scan(&total)
+
+	query := `SELECT
+		COALESCE(dp.id::text,''), COALESCE(dp.user_id::text,''), COALESCE(dp.license_number,''),
+		COALESCE(dp.vehicle_make,''), COALESCE(dp.vehicle_model,''), COALESCE(dp.vehicle_year,0),
+		COALESCE(dp.vehicle_plate,''), COALESCE(dp.vehicle_color,''), COALESCE(dp.capacity,4),
+		COALESCE(dp.bg_check_status,'pending'), COALESCE(dp.rating_avg,0), COALESCE(dp.rating_count,0),
+		dp.verified_at, COALESCE(dp.created_at, u.created_at),
+		u.id, u.email, COALESCE(u.phone,''), u.name, u.role, u.status, COALESCE(u.avatar_url,''),
+		u.created_at, u.updated_at
+		FROM users u LEFT JOIN driver_profiles dp ON u.id = dp.user_id
+		WHERE u.role = 'driver' ORDER BY u.created_at DESC LIMIT $1 OFFSET $2`
+	rows, err := r.db.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var results []models.DriverWithUser
+	for rows.Next() {
+		var d models.DriverWithUser
+		rows.Scan(
+			&d.ID, &d.UserID, &d.LicenseNumber, &d.VehicleMake, &d.VehicleModel,
+			&d.VehicleYear, &d.VehiclePlate, &d.VehicleColor, &d.Capacity,
+			&d.BGCheckStatus, &d.RatingAvg, &d.RatingCount, &d.VerifiedAt, &d.DriverProfile.CreatedAt,
+			&d.User.ID, &d.User.Email, &d.User.Phone, &d.User.Name, &d.User.Role, &d.User.Status, &d.User.AvatarURL,
+			&d.User.CreatedAt, &d.User.UpdatedAt,
+		)
+		results = append(results, d)
+	}
+	return results, total, nil
+}

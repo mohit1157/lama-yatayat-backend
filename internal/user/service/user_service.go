@@ -161,8 +161,8 @@ func (s *UserService) SuspendDriver(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (s *UserService) ListDrivers(ctx context.Context, limit, offset int) ([]models.User, int, error) {
-	return s.repo.ListByRole(ctx, "driver", limit, offset)
+func (s *UserService) ListDrivers(ctx context.Context, limit, offset int) ([]models.DriverWithUser, int, error) {
+	return s.repo.ListDriversWithProfiles(ctx, limit, offset)
 }
 
 func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]models.User, int, error) {
