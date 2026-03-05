@@ -55,6 +55,27 @@ func (h *GeoHandler) UpdateLocation(c *gin.Context) {
 	response.Success(c, gin.H{"message": "location updated"})
 }
 
+func (h *GeoHandler) UpdateDriverStatus(c *gin.Context) {
+	driverID := c.Param("id")
+	var req struct {
+		Status string `json:"status" binding:"required"` // "online" or "offline"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	ctx := context.Background()
+	h.rdb.HSet(ctx, "driver:meta:"+driverID, "status", req.Status)
+
+	if req.Status == "offline" {
+		// Remove from geospatial index when going offline
+		h.rdb.ZRem(ctx, driverLocationKey, driverID)
+	}
+
+	response.Success(c, gin.H{"message": "status updated", "status": req.Status})
+}
+
 func (h *GeoHandler) GetNearbyDrivers(c *gin.Context) {
 	lat, _ := strconv.ParseFloat(c.Query("lat"), 64)
 	lng, _ := strconv.ParseFloat(c.Query("lng"), 64)

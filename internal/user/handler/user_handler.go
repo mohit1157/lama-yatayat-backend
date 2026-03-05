@@ -62,6 +62,16 @@ func (h *UserHandler) RefreshToken(c *gin.Context) {
 	response.Success(c, res)
 }
 
+func (h *UserHandler) GetMe(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	user, err := h.svc.GetUser(c.Request.Context(), userID.(string))
+	if err != nil {
+		response.NotFound(c, "user not found")
+		return
+	}
+	response.Success(c, user)
+}
+
 func (h *UserHandler) GetUser(c *gin.Context) {
 	user, err := h.svc.GetUser(c.Request.Context(), c.Param("id"))
 	if err != nil {

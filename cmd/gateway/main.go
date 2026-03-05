@@ -186,22 +186,33 @@ func main() {
 	protected := api.Group("")
 	protected.Use(middleware.AuthRequired(jwtMgr))
 
+	// Auth (protected)
+	protected.GET("/auth/me", uH.GetMe)
+
 	// User
 	protected.GET("/users/:id", uH.GetUser)
 	protected.PUT("/users/:id", uH.UpdateUser)
 	protected.POST("/drivers/onboard", uH.OnboardDriver)
 	protected.GET("/drivers/:id/status", uH.GetDriverStatus)
+	protected.GET("/drivers/:id/profile", uH.GetDriverStatus) // alias for mobile apps
 
 	// Rides
 	protected.POST("/rides/request", rH.RequestRide)
 	protected.GET("/rides/:id", rH.GetRide)
 	protected.PUT("/rides/:id/cancel", rH.CancelRide)
+	protected.DELETE("/rides/:id/cancel", rH.CancelRide) // alias for mobile app
 	protected.POST("/rides/:id/pickup-confirm", rH.ConfirmPickup)
 	protected.POST("/rides/:id/dropoff-confirm", rH.ConfirmDropoff)
+	protected.POST("/rides/:id/pickup", rH.ConfirmPickup)   // alias for mobile app
+	protected.POST("/rides/:id/dropoff", rH.ConfirmDropoff) // alias for mobile app
 	protected.GET("/rides/active", rH.GetActiveRide)
 	protected.GET("/rides/history", rH.GetRideHistory)
 	protected.POST("/rides/:id/rate", rH.RateRide)
 	protected.GET("/rides/estimate", rH.GetFareEstimate)
+
+	// Batch ride management (for driver mobile app)
+	protected.POST("/rides/batches/:id/accept", mH.AcceptBatch)
+	protected.POST("/rides/batches/:id/decline", mH.DeclineBatch)
 
 	// Payments
 	protected.POST("/payments/charge", pH.ChargeRider)
@@ -211,6 +222,8 @@ func main() {
 	protected.GET("/payments/history", pH.GetHistory)
 	protected.POST("/payments/methods", pH.AddPaymentMethod)
 	protected.GET("/payments/methods", pH.ListPaymentMethods)
+	protected.GET("/payments/earnings/summary", pH.GetEarningsSummary)
+	protected.GET("/payments/earnings/recent", pH.GetRecentEarnings)
 
 	// Pricing
 	protected.POST("/pricing/estimate", prH.EstimateFare)
@@ -224,6 +237,7 @@ func main() {
 
 	// Geolocation
 	protected.PUT("/geo/drivers/:id/location", gH.UpdateLocation)
+	protected.PUT("/geo/drivers/:id/status", gH.UpdateDriverStatus)
 	protected.GET("/geo/drivers/nearby", gH.GetNearbyDrivers)
 	protected.POST("/geo/route", gH.GetRoute)
 	protected.GET("/geo/eta", gH.GetETA)

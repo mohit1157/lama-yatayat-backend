@@ -114,3 +114,36 @@ func (h *PaymentHandler) ListPaymentMethods(c *gin.Context) {
 	}
 	response.Success(c, methods)
 }
+
+func (h *PaymentHandler) GetEarningsSummary(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	wallet, err := h.svc.GetWallet(c.Request.Context(), userID.(string))
+	if err != nil {
+		// Return zeroed summary if no wallet yet
+		response.Success(c, gin.H{
+			"today":      gin.H{"amount": 0, "rides": 0},
+			"this_week":  gin.H{"amount": 0, "rides": 0},
+			"avg_per_ride": 0,
+		})
+		return
+	}
+	response.Success(c, gin.H{
+		"today":      gin.H{"amount": wallet.Balance, "rides": 0},
+		"this_week":  gin.H{"amount": wallet.Balance, "rides": 0},
+		"avg_per_ride": 0,
+	})
+}
+
+func (h *PaymentHandler) GetRecentEarnings(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if limit > 50 {
+		limit = 50
+	}
+	txns, _, err := h.svc.GetHistory(c.Request.Context(), userID.(string), limit, 0)
+	if err != nil {
+		response.Success(c, []interface{}{})
+		return
+	}
+	response.Success(c, txns)
+}

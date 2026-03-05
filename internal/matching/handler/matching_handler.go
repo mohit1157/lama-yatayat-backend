@@ -33,6 +33,26 @@ func (h *MatchingHandler) GetBatch(c *gin.Context) {
 	response.Success(c, gin.H{"batch_id": c.Param("id"), "message": "batch details"})
 }
 
+func (h *MatchingHandler) AcceptBatch(c *gin.Context) {
+	batchID := c.Param("id")
+	driverID, _ := c.Get("user_id")
+	response.Success(c, gin.H{
+		"batch_id":  batchID,
+		"driver_id": driverID,
+		"message":   "batch accepted",
+		"status":    "accepted",
+	})
+}
+
+func (h *MatchingHandler) DeclineBatch(c *gin.Context) {
+	batchID := c.Param("id")
+	response.Success(c, gin.H{
+		"batch_id": batchID,
+		"message":  "batch declined",
+		"status":   "declined",
+	})
+}
+
 func (h *MatchingHandler) OptimizeSequence(c *gin.Context) {
 	response.Success(c, gin.H{"message": "sequence optimized"})
 }

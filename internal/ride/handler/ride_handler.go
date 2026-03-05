@@ -78,8 +78,8 @@ func (h *RideHandler) ConfirmDropoff(c *gin.Context) {
 func (h *RideHandler) GetActiveRide(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	ride, err := h.svc.GetActiveRide(c.Request.Context(), userID.(string))
-	if err != nil {
-		response.Success(c, gin.H{"ride": nil})
+	if err != nil || ride == nil {
+		response.NotFound(c, "no active ride")
 		return
 	}
 	response.Success(c, ride)
