@@ -102,6 +102,30 @@ func (h *Hub) BroadcastToRide(rideID string, msg *Message) {
 	h.broadcast <- msg
 }
 
+// SendToUser sends a message to a specific connected client by userID.
+func (h *Hub) SendToUser(userID string, msg *Message) {
+	h.mu.RLock()
+	client, ok := h.clients[userID]
+	h.mu.RUnlock()
+	if !ok {
+		log.Printf("WS: user %s not connected, skipping send", userID)
+		return
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("WS: failed to marshal message for user %s: %v", userID, err)
+		return
+	}
+
+	select {
+	case client.Send <- data:
+		log.Printf("WS: sent %s message to user %s", msg.Type, userID)
+	default:
+		log.Printf("WS: send buffer full for user %s, dropping message", userID)
+	}
+}
+
 func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

@@ -14,6 +14,7 @@ import (
 )
 
 const pendingRidesKey = "pending_rides"
+const driversLocationKey = "drivers:locations"
 
 type MatchingService struct {
 	rdb            *redis.Client
@@ -122,14 +123,54 @@ func (s *MatchingService) SetupEventListeners() {
 			return err
 		}
 
-		return s.AddPendingRide(ctx, models.PendingRide{
+		pendingRide := models.PendingRide{
 			RideID:     payload.RideID,
 			RiderID:    payload.RiderID,
 			PickupLat:  payload.PickupLat,
 			PickupLng:  payload.PickupLng,
 			DropoffLat: payload.DropoffLat,
 			DropoffLng: payload.DropoffLng,
-		})
+		}
+
+		if err := s.AddPendingRide(ctx, pendingRide); err != nil {
+			return err
+		}
+
+		// Query nearby online drivers within 5000m of the pickup location
+		nearbyDrivers, err := s.rdb.GeoSearchLocation(ctx, driversLocationKey, &redis.GeoSearchLocationQuery{
+			GeoSearchQuery: redis.GeoSearchQuery{
+				Longitude:  payload.PickupLng,
+				Latitude:   payload.PickupLat,
+				Radius:     5000,
+				RadiusUnit: "m",
+				Sort:       "ASC",
+				Count:      20,
+			},
+			WithCoord: true,
+			WithDist:  true,
+		}).Result()
+		if err != nil {
+			log.Printf("MATCH: failed to query nearby drivers for ride %s: %v", payload.RideID, err)
+			return nil // don't fail the ride request if geo query fails
+		}
+
+		log.Printf("MATCH: found %d nearby drivers for ride %s", len(nearbyDrivers), payload.RideID)
+
+		// Publish a batch.offer event for each nearby driver
+		for _, driver := range nearbyDrivers {
+			s.bus.Publish(ctx, "batch.offer", map[string]interface{}{
+				"driver_id":   driver.Name,
+				"ride_id":     payload.RideID,
+				"rider_id":    payload.RiderID,
+				"pickup_lat":  payload.PickupLat,
+				"pickup_lng":  payload.PickupLng,
+				"dropoff_lat": payload.DropoffLat,
+				"dropoff_lng": payload.DropoffLng,
+				"distance_m":  driver.Dist,
+			})
+		}
+
+		return nil
 	})
 
 	s.bus.Subscribe("ride.cancelled", func(ctx context.Context, event events.Event) error {

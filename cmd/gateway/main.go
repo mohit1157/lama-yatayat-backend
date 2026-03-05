@@ -139,11 +139,12 @@ func main() {
 		return nil
 	})
 
-	// On ride matched → notify rider
+	// On ride matched → notify rider via push + WebSocket
 	bus.Subscribe("ride.matched", func(ctx context.Context, event events.Event) error {
 		var payload struct {
-			RideID  string `json:"ride_id"`
-			RiderID string `json:"rider_id"`
+			RideID   string `json:"ride_id"`
+			RiderID  string `json:"rider_id"`
+			DriverID string `json:"driver_id"`
 		}
 		json.Unmarshal(event.Payload, &payload)
 
@@ -151,6 +152,39 @@ func main() {
 			"A driver has been assigned to your ride.",
 			map[string]string{"ride_id": payload.RideID, "type": "ride_matched"})
 
+		// Send real-time WebSocket notification to the rider
+		hub.SendToUser(payload.RiderID, &connection.Message{
+			Type:    "ride_matched",
+			RideID:  payload.RideID,
+			Payload: event.Payload,
+		})
+
+		return nil
+	})
+
+	// On batch.offer → send WebSocket notification to the driver
+	bus.Subscribe("batch.offer", func(ctx context.Context, event events.Event) error {
+		var payload struct {
+			DriverID  string  `json:"driver_id"`
+			RideID    string  `json:"ride_id"`
+			RiderID   string  `json:"rider_id"`
+			PickupLat float64 `json:"pickup_lat"`
+			PickupLng float64 `json:"pickup_lng"`
+			DropoffLat float64 `json:"dropoff_lat"`
+			DropoffLng float64 `json:"dropoff_lng"`
+			DistanceM float64 `json:"distance_m"`
+		}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return err
+		}
+
+		hub.SendToUser(payload.DriverID, &connection.Message{
+			Type:    "batch_request",
+			RideID:  payload.RideID,
+			Payload: event.Payload,
+		})
+
+		log.Printf("WS: sent batch_request to driver %s for ride %s", payload.DriverID, payload.RideID)
 		return nil
 	})
 
